@@ -6,7 +6,7 @@ function createNotionButton() {
   
     // Function to extract Notion URL
     function getNotionUrl() {
-      const textarea = document.querySelector('textarea[data-selenium-test="property-input-gpt_url"]');
+      const textarea = document.querySelector('textarea[data-selenium-test="property-input-notion_url"]');
       return textarea ? textarea.value : null;
     }
   
