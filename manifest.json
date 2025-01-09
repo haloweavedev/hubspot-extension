@@ -1,33 +1,19 @@
 {
-    "manifest_version": 3,
-    "name": "HubSpot Notion Button",
-    "version": "4.0",
-    "description": "Adds a Notion button to HubSpot deal records",
-    "permissions": [
-      "activeTab",
-      "declarativeNetRequest",
-      "declarativeNetRequestWithHostAccess"
-    ],
-    "host_permissions": [
-      "https://app.hubspot.com/*",
-      "https://*.notion.site/*",
-      "https://api.allorigins.win/*"
-    ],
-    "content_scripts": [
-      {
-        "matches": ["https://app.hubspot.com/contacts/*/record/0-3/*"],
-        "js": ["content.js"],
-        "css": ["styles.css"]
-      }
-    ],
-    "declarative_net_request": {
-      "rule_resources": [
-        {
-          "id": "ruleset_1",
-          "enabled": true,
-          "path": "rules.json"
-        }
-      ]
+  "manifest_version": 3,
+  "name": "HubSpot Notion Modal",
+  "version": "5.0",
+  "description": "Adds a Notion button to HubSpot deal records",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://app.hubspot.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://app.hubspot.com/contacts/*/record/0-3/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
     }
-  }
-  
+  ]
+}
