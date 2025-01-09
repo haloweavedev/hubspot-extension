@@ -1,8 +1,18 @@
 // content.js
 function createNotionButton() {
-  // Check if we're on a deal record page
-  if (!window.location.href.match(/\/record\/0-3\/\d+$/)) {
+  // Check if we're on a deal record page with optional trailing slash
+  const urlPattern = /\/record\/0-3\/\d+\/?$/;
+  const currentUrl = window.location.href;
+  
+  debugLog('Checking URL:', currentUrl);
+  
+  if (!urlPattern.test(currentUrl)) {
+    debugLog('Not on deal page, pattern not matched');
+    alert("You are not on the correct page.");
     return;
+  } else {
+    debugLog('On deal page, pattern matched');
+    alert("You are on the correct page.");
   }
 
   let embedContainer = null;
@@ -10,11 +20,13 @@ function createNotionButton() {
   // Function to extract Notion URL
   function getNotionUrl() {
     const textarea = document.querySelector('textarea[data-selenium-test="property-input-gpt_url"]');
-    console.log('Found textarea:', textarea);
+    debugLog('Found textarea:', textarea);
     if (textarea) {
-      console.log('Extracted URL:', textarea.value);
-      return textarea.value;
+      const url = textarea.value.trim();
+      debugLog('Extracted URL:', url);
+      return url;
     }
+    debugLog('No textarea found');
     return null;
   }
 
@@ -25,12 +37,6 @@ function createNotionButton() {
     if (data) {
       console.log('Data:', data);
     }
-  }
-
-  // Function to get proxied URL
-  function getProxiedUrl(url) {
-    // Using allorigins.win as a CORS proxy
-    return `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
   }
 
   // Function to embed Notion
@@ -46,10 +52,6 @@ function createNotionButton() {
     embedContainer = document.createElement('div');
     embedContainer.className = 'notion-embed-container';
 
-    // Create main content wrapper
-    const contentWrapper = document.createElement('div');
-    contentWrapper.className = 'notion-content-wrapper';
-
     // Add loading indicator
     const loadingDiv = document.createElement('div');
     loadingDiv.className = 'notion-loading';
@@ -63,108 +65,121 @@ function createNotionButton() {
     closeButton.onclick = () => embedContainer.remove();
     embedContainer.appendChild(closeButton);
 
-    try {
-      // First try direct embedding
-      const iframe = document.createElement('iframe');
-      iframe.className = 'notion-embed-iframe';
-      iframe.src = url;
-      iframe.allow = 'fullscreen';
-      
-      contentWrapper.appendChild(iframe);
-      embedContainer.appendChild(contentWrapper);
+    // Create iframe
+    const iframe = document.createElement('iframe');
+    iframe.className = 'notion-embed-iframe';
+    iframe.src = url;
+    iframe.allow = 'fullscreen';
 
-      // Add to HubSpot DOM
-      const targetContainer = document.querySelector('.private-contents') || document.body;
-      targetContainer.appendChild(embedContainer);
+    // Add iframe to container
+    embedContainer.appendChild(iframe);
 
-      // Monitor iframe load status
-      iframe.onload = () => {
-        debugLog('Iframe loaded');
-        loadingDiv.style.display = 'none';
-        try {
-          // Try to access iframe content
-          const iframeDoc = iframe.contentWindow.document;
-          debugLog('Successfully accessed iframe content');
-        } catch (e) {
-          debugLog('Error accessing iframe content:', e);
-          // Try proxy approach
-          tryProxyApproach(url);
-        }
-      };
+    // Find target container using multiple selectors
+    const targetContainer = document.querySelector('.private-contents') || 
+                          document.querySelector('main') || 
+                          document.body;
+    targetContainer.appendChild(embedContainer);
 
-    } catch (error) {
-      debugLog('Error with direct embed:', error);
-      tryProxyApproach(url);
-    }
-  }
+    // Monitor iframe load status
+    iframe.onload = () => {
+      debugLog('Iframe loaded');
+      loadingDiv.style.display = 'none';
+    };
 
-  // Function to try proxy approach
-  async function tryProxyApproach(url) {
-    debugLog('Attempting proxy approach');
-    try {
-      const proxyUrl = getProxiedUrl(url);
-      const response = await fetch(proxyUrl);
-      const html = await response.text();
-
-      // Create a new iframe with the proxied content
-      const iframe = document.createElement('iframe');
-      iframe.className = 'notion-embed-iframe';
-      iframe.srcdoc = html;
-      iframe.allow = 'fullscreen';
-
-      // Replace existing content
-      const contentWrapper = embedContainer.querySelector('.notion-content-wrapper');
-      contentWrapper.innerHTML = '';
-      contentWrapper.appendChild(iframe);
-      
-      const loadingDiv = embedContainer.querySelector('.notion-loading');
-      if (loadingDiv) loadingDiv.style.display = 'none';
-
-    } catch (error) {
-      debugLog('Proxy approach failed:', error);
-      const loadingDiv = embedContainer.querySelector('.notion-loading');
-      if (loadingDiv) {
-        loadingDiv.innerHTML = 'Unable to load Notion content. Try opening in a new tab.';
-      }
-    }
+    iframe.onerror = (error) => {
+      debugLog('Iframe error:', error);
+      loadingDiv.innerHTML = 'Error loading Notion. Try opening in new tab.';
+    };
   }
 
   // Create Notion button
   function addNotionButton() {
-    const tabList = document.querySelector('.private-tabs__list');
+    // Try multiple selectors to find the tab list
+    const selectors = [
+      'div[role="navigation"]',
+      'div[class*="UITabs__StyledList"]',
+      'div[class*="private-tabs__list"]',
+      '.private-tabs__list'
+    ];
+
+    const tabList = selectors.reduce((found, selector) => 
+      found || document.querySelector(selector), null);
+
+    debugLog('Tab list found:', !!tabList);
+
     if (!tabList || document.querySelector('.notion-tab')) {
       return;
     }
 
+    // Find existing tab to copy styles
+    const existingTab = tabList.querySelector('a[role="button"]');
+    debugLog('Existing tab found:', !!existingTab);
+
     const notionTab = document.createElement('a');
-    notionTab.className = 'private-link uiLinkWithoutUnderline UITab__StyledLink-d78hoc-2 jcwBLG private-tab private-link--unstyled notion-tab';
+    
+    if (existingTab) {
+      // Copy classes from existing tab
+      const baseClasses = existingTab.className
+        .split(' ')
+        .filter(cls => !cls.includes('active'))
+        .join(' ');
+      notionTab.className = `${baseClasses} notion-tab`;
+    } else {
+      // Fallback classes
+      notionTab.className = 'private-link private-tab notion-tab';
+    }
+
     notionTab.setAttribute('role', 'button');
     notionTab.setAttribute('tabindex', '0');
     notionTab.textContent = 'Notion';
 
-    const indicator = document.createElement('span');
-    indicator.className = 'UITab__TabIndicator-d78hoc-0 bjfjBP private-tab__indicator';
-    notionTab.appendChild(indicator);
+    // Copy indicator style from existing tab
+    if (existingTab) {
+      const existingIndicator = existingTab.querySelector('span[class*="TabIndicator"], span[class*="tab__indicator"]');
+      if (existingIndicator) {
+        const indicator = document.createElement('span');
+        indicator.className = existingIndicator.className;
+        notionTab.appendChild(indicator);
+      }
+    }
 
     notionTab.addEventListener('click', () => {
       const notionUrl = getNotionUrl();
       if (notionUrl) {
         embedNotion(notionUrl);
       } else {
-        console.log('No Notion URL found');
+        debugLog('No Notion URL found');
       }
     });
 
     tabList.appendChild(notionTab);
-    debugLog('Notion button added');
+    debugLog('Notion button added successfully');
   }
 
-  // Initial setup
+  // Initial setup with retry mechanism
+  let retryCount = 0;
+  const maxRetries = 5;
+
+  function tryAddButton() {
+    if (retryCount >= maxRetries) {
+      debugLog('Max retries reached, giving up');
+      return;
+    }
+
+    if (!document.querySelector('.notion-tab')) {
+      addNotionButton();
+      retryCount++;
+      setTimeout(tryAddButton, 1000);
+    }
+  }
+
+  // Start trying to add the button
+  tryAddButton();
+
+  // Observe DOM changes
   const observer = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      if (mutation.addedNodes.length) {
-        addNotionButton();
-      }
+    if (!document.querySelector('.notion-tab')) {
+      addNotionButton();
     }
   });
 
@@ -172,8 +187,6 @@ function createNotionButton() {
     childList: true,
     subtree: true
   });
-
-  addNotionButton();
 }
 
 // Initialize when DOM is ready
