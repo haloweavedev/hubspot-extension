@@ -1,0 +1,14 @@
+{
+    "manifest_version": 3,
+    "name": "HubSpot Notion Button",
+    "version": "1.0",
+    "description": "Adds a Notion button to HubSpot deal records",
+    "permissions": ["activeTab"],
+    "content_scripts": [
+      {
+        "matches": ["https://app.hubspot.com/contacts/*/record/0-3/*"],
+        "js": ["content.js"],
+        "css": ["styles.css"]
+      }
+    ]
+  }
